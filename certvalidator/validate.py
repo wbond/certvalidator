@@ -1,7 +1,8 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
-
+from datetime import datetime
 from asn1crypto import x509, crl
+from asn1crypto.util import timezone
 from oscrypto import asymmetric
 import oscrypto.errors
 
@@ -880,7 +881,10 @@ def verify_ocsp_response(cert, path, validation_context, cert_description=None, 
             type_name(cert_description)
         ))
 
-    moment = validation_context.moment
+    if validation_context._revocation_moment:
+        moment = validation_context._revocation_moment
+    else:
+        moment = datetime.now(timezone.utc)
 
     issuer = path.find_issuer(cert)
     certificate_registry = validation_context.certificate_registry
@@ -1205,7 +1209,10 @@ def verify_crl(cert, path, validation_context, use_deltas=True, cert_description
             type_name(cert_description)
         ))
 
-    moment = validation_context.moment
+    if validation_context._revocation_moment:
+        moment = validation_context._revocation_moment
+    else:
+        moment = datetime.now(timezone.utc)
     certificate_registry = validation_context.certificate_registry
 
     certificate_lists = validation_context.retrieve_crls(cert)
