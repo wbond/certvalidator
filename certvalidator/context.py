@@ -88,7 +88,7 @@ class ValidationContext():
     # validity against the time which they were acquired. This time is assumed
     # to be identical to the passed in moment. This value will only be set to
     # moment if a moment is given and either a CRL or OCSP list is also given.
-    _revocation_moment = None
+    revocation_moment = None
 
     # By default, any CRLs or OCSP responses that are passed to the constructor
     # are checked. If _allow_fetching is True, any CRLs or OCSP responses that
@@ -185,7 +185,8 @@ class ValidationContext():
             A set of unicode strings of hash algorithms that should be
             considered weak. Valid options include: "md2", "md5", "sha1"
         """
-        _revocation_moment = None
+
+        _revocation_moment = datetime.now(timezone.utc)
         if crls is not None:
             if not isinstance(crls, (list, tuple)):
                 raise TypeError(pretty_message(
@@ -344,7 +345,7 @@ class ValidationContext():
         )
 
         self.moment = moment
-        self._revocation_moment = _revocation_moment
+        self.revocation_moment = _revocation_moment
 
         self._validate_map = {}
         self._crl_issuer_map = {}
