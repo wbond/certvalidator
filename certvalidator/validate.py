@@ -1,7 +1,6 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
 from asn1crypto import x509, crl
-from asn1crypto.util import timezone
 from oscrypto import asymmetric
 import oscrypto.errors
 
