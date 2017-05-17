@@ -75,6 +75,7 @@ class ValidateTests(unittest.TestCase):
             context = ValidationContext(
                 trust_roots=ca_certs,
                 other_certs=other_certs,
+                moment=datetime(2017, 4, 10, tzinfo=timezone.utc),
                 allow_fetching=True
             )
             paths = context.certificate_registry.build_paths(cert)
@@ -99,6 +100,7 @@ class ValidateTests(unittest.TestCase):
             trust_roots=ca_certs,
             other_certs=other_certs,
             allow_fetching=True,
+            moment=datetime(2017, 4, 10, tzinfo=timezone.utc),
             crl_fetch_params={'timeout': 30},
             ocsp_fetch_params={'timeout': 30},
             revocation_mode='hard-fail'

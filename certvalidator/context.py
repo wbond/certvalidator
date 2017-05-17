@@ -140,12 +140,13 @@ class ValidationContext():
             be ignored.
 
         :param moment:
-            If certificate validation should be performed based on a date and
-            time other than right now. A datetime.datetime object with a tzinfo
-            value. If this parameter is specified, and OCSP and/or CRL responses
-            are passed then then they will be validated relative to this moment.
-            allow_fetching=True can not be combined when OCSP and/or CRL
-            responses are also passed.
+            A datetime.datetime object with a tzinfo value.
+            To be used when certificate validation should be performed based on
+            a date and time other than right now. This is common when validating
+            signatures that include timestamps. Works in combination with
+            either passed OCSP and/or CRL responses *OR* allow_fetching=True,
+            but *NOT* both. If allow_fetching=True the certificate revocation
+            will be checked against the current time and not the passed moment.
 
         :param crls:
             None or a list/tuple of asn1crypto.crl.CertificateList objects of
@@ -372,6 +373,13 @@ class ValidationContext():
         self._revocation_mode = revocation_mode
         self._soft_fail_exceptions = []
         self.weak_hash_algos = weak_hash_algos
+
+    @property
+    def allow_fetching(self):
+        """
+        Check if allow fetching is allowed
+        """
+        return self._allow_fetching
 
     @property
     def crls(self):
