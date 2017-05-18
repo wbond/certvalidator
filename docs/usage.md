@@ -404,5 +404,5 @@ validator = CertificateValidator(end_entity_cert, validation_context=context)
 ```
 
 If moment-in-time validation is being performed, the `allow_fetching` option
-can not be used. Instead, any revocation CRLs or OCSP responses should be
-provided via the `crls` or `ocsps` parameters.
+can now also be used. Alternatively, any revocation CRLs or OCSP responses can
+be provided via the `crls` or `ocsps` parameters.

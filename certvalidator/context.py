@@ -84,8 +84,14 @@ class ValidationContext():
     # period of certificates
     moment = None
 
+    # When using cached OCSP and CRL responses it is necessary to check their
+    # validity against the time which they were acquired. This time is assumed
+    # to be identical to the passed in moment. This value will only be set to
+    # moment if a moment is given and either a CRL or OCSP list is also given.
+    revocation_moment = None
+
     # By default, any CRLs or OCSP responses that are passed to the constructor
-    # are chccked. If _allow_fetching is True, any CRLs or OCSP responses that
+    # are checked. If _allow_fetching is True, any CRLs or OCSP responses that
     # can be downloaded will also be checked. The next two attributes change
     # that behavior.
 
@@ -134,11 +140,13 @@ class ValidationContext():
             be ignored.
 
         :param moment:
-            If certificate validation should be performed based on a date and
-            time other than right now. A datetime.datetime object with a tzinfo
-            value. If this parameter is specified, then the only way to check
-            OCSP and CRL responses is to pass them via the crls and ocsps
-            parameters. Can not be combined with allow_fetching=True.
+            A datetime.datetime object with a tzinfo value.
+            To be used when certificate validation should be performed based on
+            a date and time other than right now. This is common when validating
+            signatures that include timestamps. Works in combination with
+            either passed OCSP and/or CRL responses *OR* allow_fetching=True,
+            but *NOT* both. If allow_fetching=True the certificate revocation
+            will be checked against the current time and not the passed moment.
 
         :param crls:
             None or a list/tuple of asn1crypto.crl.CertificateList objects of
@@ -179,6 +187,7 @@ class ValidationContext():
             considered weak. Valid options include: "md2", "md5", "sha1"
         """
 
+        _revocation_moment = datetime.now(timezone.utc)
         if crls is not None:
             if not isinstance(crls, (list, tuple)):
                 raise TypeError(pretty_message(
@@ -227,15 +236,7 @@ class ValidationContext():
                 new_ocsps.append(ocsp_)
             ocsps = new_ocsps
 
-        if moment is not None:
-            if allow_fetching:
-                raise ValueError(pretty_message(
-                    '''
-                    allow_fetching must be False when moment is specified
-                    '''
-                ))
-
-        elif not allow_fetching and crls is None and ocsps is None and revocation_mode != "soft-fail":
+        if not allow_fetching and crls is None and ocsps is None and revocation_mode != "soft-fail":
             raise ValueError(pretty_message(
                 '''
                 revocation_mode is "%s" and allow_fetching is False, however
@@ -278,6 +279,15 @@ class ValidationContext():
                     attribute is not set to a valid timezone
                     '''
                 ))
+        if moment is not None and (crls or ocsps):
+            if allow_fetching:
+                raise ValueError(pretty_message(
+                    '''
+                    allow_fetching must be False when moment and (OCSPs or CRLs)
+                    are specified
+                    '''
+                ))
+            _revocation_moment = moment
 
         if revocation_mode not in set(['soft-fail', 'hard-fail', 'require']):
             raise ValueError(pretty_message(
@@ -336,6 +346,7 @@ class ValidationContext():
         )
 
         self.moment = moment
+        self.revocation_moment = _revocation_moment
 
         self._validate_map = {}
         self._crl_issuer_map = {}
@@ -362,6 +373,13 @@ class ValidationContext():
         self._revocation_mode = revocation_mode
         self._soft_fail_exceptions = []
         self.weak_hash_algos = weak_hash_algos
+
+    @property
+    def allow_fetching(self):
+        """
+        Check if allow fetching is allowed
+        """
+        return self._allow_fetching
 
     @property
     def crls(self):
@@ -468,7 +486,7 @@ class ValidationContext():
                 self._fetched_crls[cert.issuer_serial] = []
                 if self._revocation_mode == "soft-fail":
                     self._soft_fail_exceptions.append(e)
-                    raise SoftFailError()
+                    raise SoftFailError(e.reason, [e.reason])
                 else:
                     raise
 
@@ -507,7 +525,7 @@ class ValidationContext():
                 self._fetched_ocsps[cert.issuer_serial] = []
                 if self._revocation_mode == "soft-fail":
                     self._soft_fail_exceptions.append(e)
-                    raise SoftFailError()
+                    raise SoftFailError(e.reason, [e.reason])
                 else:
                     raise
 

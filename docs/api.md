@@ -142,11 +142,13 @@
 > >         be ignored.
 > >
 > >     :param moment:
-> >         If certificate validation should be performed based on a date and
-> >         time other than right now. A datetime.datetime object with a tzinfo
-> >         value. If this parameter is specified, then the only way to check
-> >         OCSP and CRL responses is to pass them via the crls and ocsps
-> >         parameters. Can not be combined with allow_fetching=True.
+> >         A datetime.datetime object with a tzinfo value.
+> >         To be used when certificate validation should be performed based on
+> >         a date and time other than right now. This is common when validating
+> >         signatures that include timestamps. Works in combination with
+> >         either passed OCSP and/or CRL responses *OR* allow_fetching=True,
+> >         but *NOT* both. If allow_fetching=True the certificate revocation
+> >         will be checked against the current time and not the passed moment.
 > >
 > >     :param crls:
 > >         None or a list/tuple of asn1crypto.crl.CertificateList objects of

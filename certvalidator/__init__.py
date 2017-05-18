@@ -94,7 +94,6 @@ class CertificateValidator():
             return
 
         exceptions = []
-
         if self._certificate.hash_algo in self._context.weak_hash_algos:
             raise InvalidCertificateError(pretty_message(
                 '''
