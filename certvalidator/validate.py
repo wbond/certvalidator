@@ -897,7 +897,6 @@ def verify_ocsp_response(cert, path, validation_context, cert_description=None, 
     else:
         moment = validation_context.revocation_moment
 
-
     issuer = path.find_issuer(cert)
     certificate_registry = validation_context.certificate_registry
 
