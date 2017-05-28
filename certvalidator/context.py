@@ -525,7 +525,10 @@ class ValidationContext():
                 self._fetched_ocsps[cert.issuer_serial] = []
                 if self._revocation_mode == "soft-fail":
                     self._soft_fail_exceptions.append(e)
-                    raise SoftFailError(e.reason, [e.reason])
+                    if hasattr(e, 'reason'):
+                        raise SoftFailError(e.reason, [e.reason])
+                    else:
+                        raise SoftFailError(e.strerror, [e.strerror])
                 else:
                     raise
 
