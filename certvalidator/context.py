@@ -486,7 +486,11 @@ class ValidationContext():
                 self._fetched_crls[cert.issuer_serial] = []
                 if self._revocation_mode == "soft-fail":
                     self._soft_fail_exceptions.append(e)
-                    raise SoftFailError(e.reason, [e.reason])
+                    if hasattr(e, 'reason'):
+                        if isinstance(e.reason, str):
+                            raise SoftFailError(e.reason, [e.reason])
+                        else:
+                            raise SoftFailError(str(e.reason), [str(e.reason)])
                 else:
                     raise
 
@@ -526,7 +530,10 @@ class ValidationContext():
                 if self._revocation_mode == "soft-fail":
                     self._soft_fail_exceptions.append(e)
                     if hasattr(e, 'reason'):
-                        raise SoftFailError(e.reason, [e.reason])
+                        if isinstance(e.reason, str):
+                            raise SoftFailError(e.reason, [e.reason])
+                        else:
+                            raise SoftFailError(str(e.reason), [str(e.reason)])
                     else:
                         raise SoftFailError(e.strerror, [e.strerror])
                 else:
