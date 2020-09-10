@@ -1238,22 +1238,21 @@ def verify_crl(cert, path, validation_context, use_deltas=True, cert_description
     # Build a lookup table for the Distribution point objects associated with
     # an issuer name hashable
     distribution_point_map = {}
-    sources = [cert.crl_distribution_points]
+    sources = cert.crl_distribution_points[:]
     if use_deltas:
         sources.extend(cert.delta_crl_distribution_points)
-    for dp_list in sources:
-        for distribution_point in dp_list:
-            if isinstance(distribution_point['crl_issuer'], x509.GeneralNames):
-                dp_name_hashes = []
-                for general_name in distribution_point['crl_issuer']:
-                    if general_name.name == 'directory_name':
-                        dp_name_hashes.append(general_name.chosen.hashable)
-            else:
-                dp_name_hashes = [cert.issuer.hashable]
-            for dp_name_hash in dp_name_hashes:
-                if dp_name_hash not in distribution_point_map:
-                    distribution_point_map[dp_name_hash] = []
-                distribution_point_map[dp_name_hash].append(distribution_point)
+    for distribution_point in sources:
+        if isinstance(distribution_point['crl_issuer'], x509.GeneralNames):
+            dp_name_hashes = []
+            for general_name in distribution_point['crl_issuer']:
+                if general_name.name == 'directory_name':
+                    dp_name_hashes.append(general_name.chosen.hashable)
+        else:
+            dp_name_hashes = [cert.issuer.hashable]
+        for dp_name_hash in dp_name_hashes:
+            if dp_name_hash not in distribution_point_map:
+                distribution_point_map[dp_name_hash] = []
+            distribution_point_map[dp_name_hash].append(distribution_point)
 
     valid_reasons = set([
         'key_compromise',
