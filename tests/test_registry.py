@@ -26,17 +26,24 @@ class RegistryTests(unittest.TestCase):
 
         repo = CertificateRegistry(other_certs=other_certs)
         paths = repo.build_paths(cert)
-        self.assertEqual(1, len(paths))
 
-        path = paths[0]
-        self.assertEqual(3, len(path))
         self.assertEqual(
-            [
+            [[
+                "Common Name: DigiCert Global Root CA, Organizational Unit: www.digicert.com, "
+                "Organization: DigiCert Inc, Country: US",
+                "Common Name: DigiCert SHA2 Secure Server CA, Organization: DigiCert Inc, Country: US",
+                "Common Name: www.mozilla.org, Organizational Unit: WebOps, Organization: Mozilla Corporation, "
+                "Locality: Mountain View, State/Province: California, Country: US",
+            ]],
+            [[item.subject.human_friendly for item in path] for path in paths]
+        )
+        self.assertEqual(
+            [[
                 b'\x80Q\x06\x012\xad\x9a\xc2}Q\x87\xa0\xe8\x87\xfb\x01b\x01U\xee',
                 b"\x10_\xa6z\x80\x08\x9d\xb5'\x9f5\xce\x83\x0bC\x88\x9e\xa3\xc7\r",
                 b'I\xac\x03\xf8\xf3Km\xca)V)\xf2I\x9a\x98\xbe\x98\xdc.\x81'
-            ],
-            [item.subject.sha1 for item in path]
+            ]],
+            [[item.subject.sha1 for item in path] for path in paths]
         )
 
     def test_build_paths_custom_ca_certs(self):

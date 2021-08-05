@@ -42,7 +42,24 @@ class CertificateValidatorTests(unittest.TestCase):
         validator = CertificateValidator(cert, other_certs, context)
 
         path = validator.validate_tls('www.mozilla.org')
-        self.assertEqual(3, len(path))
+        self.assertEqual(
+            [
+                "Common Name: DigiCert Global Root CA, Organizational Unit: www.digicert.com, "
+                "Organization: DigiCert Inc, Country: US",
+                "Common Name: DigiCert SHA2 Secure Server CA, Organization: DigiCert Inc, Country: US",
+                "Common Name: www.mozilla.org, Organizational Unit: WebOps, Organization: Mozilla Corporation, "
+                "Locality: Mountain View, State/Province: California, Country: US",
+            ],
+            [item.subject.human_friendly for item in path]
+        )
+        self.assertEqual(
+            [
+                b'\x80Q\x06\x012\xad\x9a\xc2}Q\x87\xa0\xe8\x87\xfb\x01b\x01U\xee',
+                b"\x10_\xa6z\x80\x08\x9d\xb5'\x9f5\xce\x83\x0bC\x88\x9e\xa3\xc7\r",
+                b'I\xac\x03\xf8\xf3Km\xca)V)\xf2I\x9a\x98\xbe\x98\xdc.\x81'
+            ],
+            [item.subject.sha1 for item in path]
+        )
 
     def test_basic_certificate_validator_tls_expired(self):
         cert = self._load_cert_object('mozilla.org.crt')
