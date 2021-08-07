@@ -97,10 +97,8 @@ pip install certvalidator
 
 Various combinations of platforms and versions of Python are tested via:
 
- - [AppVeyor](https://ci.appveyor.com/project/wbond/certvalidator/history)
- - [CircleCI](https://circleci.com/gh/wbond/certvalidator)
- - [GitHub Actions](https://github.com/wbond/certvalidator/actions)
- - [Travis CI](https://travis-ci.org/wbond/certvalidator/builds)
+ - [macOS, Linux, Windows](https://github.com/wbond/certvalidator/actions/workflows/ci.yml) via GitHub Actions
+ - [arm64](https://circleci.com/gh/wbond/certvalidator) via CircleCI
 
 ## Testing
 
