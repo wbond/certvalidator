@@ -17,8 +17,6 @@ revocation checks.
  - [CI Tasks](#ci-tasks)
 
 [![GitHub Actions CI](https://github.com/wbond/certvalidator/workflows/CI/badge.svg)](https://github.com/wbond/certvalidator/actions?workflow=CI)
-[![Travis CI](https://api.travis-ci.org/wbond/certvalidator.svg?branch=master)](https://travis-ci.org/wbond/certvalidator)
-[![AppVeyor](https://ci.appveyor.com/api/projects/status/github/wbond/certvalidator?branch=master&svg=true)](https://ci.appveyor.com/project/wbond/certvalidator)
 [![CircleCI](https://circleci.com/gh/wbond/certvalidator.svg?style=shield)](https://circleci.com/gh/wbond/certvalidator)
 [![PyPI](https://img.shields.io/pypi/v/certvalidator.svg)](https://pypi.python.org/pypi/certvalidator)
 
@@ -78,7 +76,7 @@ Unsupported features:
 
  - *asn1crypto*
  - *oscrypto*
- - Python 2.6, 2.7, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8 or pypy
+ - Python 2.6, 2.7, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9 or pypy
 
 ## Installation
 
