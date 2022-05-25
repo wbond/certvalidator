@@ -57,4 +57,5 @@ Testing is performed using:
 
  - [Public Key Interoperability Test Suite from NIST](http://csrc.nist.gov/groups/ST/crypto_apps_infra/pki/pkitesting.html)
  - [OCSP tests from OpenSSL](https://github.com/openssl/openssl/blob/master/test/recipes/80-test_ocsp.t)
+ - [S/MIME example certificates from RFC 9216](https://www.rfc-editor.org/rfc/rfc9216.txt)
  - Various certificates generated for TLS certificate validation
