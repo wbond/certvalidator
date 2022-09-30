@@ -56,7 +56,7 @@ class ValidateTests(unittest.TestCase):
         cert = self._load_cert_object('global-root-ca-revoked.chain-demos.digicert.com.crt')
         ca_certs = [self._load_cert_object('digicert-global-root-ca.crt')]
         other_certs = [
-            self._load_cert_object('geotrust-mixed-2020-ca-1.crt'),
+            self._load_cert_object('digicert-tls-rsa-sha256-2020-ca1.crt'),
         ]
 
         try:
@@ -91,7 +91,7 @@ class ValidateTests(unittest.TestCase):
         cert = self._load_cert_object('global-root-ca-revoked.chain-demos.digicert.com.crt')
         ca_certs = [self._load_cert_object('digicert-global-root-ca.crt')]
         other_certs = [
-            self._load_cert_object('geotrust-mixed-2020-ca-1.crt'),
+            self._load_cert_object('digicert-tls-rsa-sha256-2020-ca1.crt'),
         ]
 
         context = ValidationContext(
@@ -109,7 +109,7 @@ class ValidateTests(unittest.TestCase):
 
         expected = (
             '(CRL|OCSP response) indicates the end-entity certificate was '
-            'revoked at 00:03:34 on 2020-07-23, due to an unspecified reason'
+            'revoked at 22:40:37 on 2022-04-13, due to an unspecified reason'
         )
         with self.assertRaisesRegex(RevokedError, expected):
             validate_path(context, path)
