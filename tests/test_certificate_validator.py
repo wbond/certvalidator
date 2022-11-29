@@ -111,5 +111,5 @@ class CertificateValidatorTests(unittest.TestCase):
         validator = CertificateValidator(cert, context)
         
         # If RSASSA-PSS does not work, this will raise an exception
-        validator.validate()
+        validator._validate_path()
 
