@@ -100,3 +100,16 @@ class CertificateValidatorTests(unittest.TestCase):
 
         # If whitelist does not work, this will raise exception for key usage
         validator.validate_usage(set(['crl_sign']))
+        
+    def test_basic_certificate_validator_RSASSA_PSS(self):
+        cert = self._load_cert_object(
+            'edifact_lieferant_strom_rwest@westnetz.de_0x79D286D4.cer')
+
+        moment = datetime(2023, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+
+        context = ValidationContext(moment=moment)
+        validator = CertificateValidator(cert, context)
+        
+        # If RSASSA-PSS does not work, this will raise an exception
+        validator.validate()
+
