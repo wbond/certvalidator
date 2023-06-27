@@ -131,7 +131,8 @@ setup(
 
     install_requires=[
         'asn1crypto>=1.2.0',
-        'oscrypto>=1.1.0'
+        'oscrypto>=1.1.0',
+        'requests-cache'
     ],
     packages=[PACKAGE_NAME],
     package_data=package_data,

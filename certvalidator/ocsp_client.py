@@ -5,10 +5,41 @@ import os
 
 from asn1crypto import core, ocsp, x509, algos
 
+from . import cache_manager
 from . import errors
 from ._types import str_cls, type_name
 from .version import __version__
-from ._urllib import Request, urlopen, URLError
+from ._urllib import URLError
+
+def _get_ocsp_request_obj(cert_id, use_nonce=True):
+    request = ocsp.Request({
+        'req_cert': cert_id,
+    })
+    tbs_request = ocsp.TBSRequest({
+        'request_list': ocsp.Requests([request]),
+    })
+
+    if use_nonce:
+        nonce_extension = ocsp.TBSRequestExtension({
+            'extn_id': 'nonce',
+            'critical': False,
+            'extn_value': core.OctetString(core.OctetString(os.urandom(16)).dump())
+        })
+        tbs_request['request_extensions'] = ocsp.TBSRequestExtensions([nonce_extension])
+
+    ocsp_request = ocsp.OCSPRequest({
+        'tbs_request': tbs_request,
+    })
+    return ocsp_request
+
+def _get_response(request, request_cache_key, timeout):
+    if cache_manager.is_request_cached(request_cache_key):
+        return cache_manager.get_from_cache(request_cache_key)
+    
+    prepped = cache_manager.session.prepare_request(request)
+    response  = cache_manager.session.send(prepped, timeout=timeout)
+    cache_manager.save_to_cache(request_cache_key, response)
+    return response
 
 
 def fetch(cert, issuer, hash_algo='sha1', nonce=True, user_agent=None, timeout=10):
@@ -67,34 +98,18 @@ def fetch(cert, issuer, hash_algo='sha1', nonce=True, user_agent=None, timeout=1
         'serial_number': cert.serial_number,
     })
 
-    request = ocsp.Request({
-        'req_cert': cert_id,
-    })
-    tbs_request = ocsp.TBSRequest({
-        'request_list': ocsp.Requests([request]),
-    })
-
-    if nonce:
-        nonce_extension = ocsp.TBSRequestExtension({
-            'extn_id': 'nonce',
-            'critical': False,
-            'extn_value': core.OctetString(core.OctetString(os.urandom(16)).dump())
-        })
-        tbs_request['request_extensions'] = ocsp.TBSRequestExtensions([nonce_extension])
-
-    ocsp_request = ocsp.OCSPRequest({
-        'tbs_request': tbs_request,
-    })
+    ocsp_request_no_nonce = _get_ocsp_request_obj(cert_id, use_nonce=False)
+    ocsp_request = _get_ocsp_request_obj(cert_id, use_nonce=True) if nonce else ocsp_request_no_nonce
 
     last_e = None
     for ocsp_url in cert.ocsp_urls:
         try:
-            request = Request(ocsp_url)
-            request.add_header('Accept', 'application/ocsp-response')
-            request.add_header('Content-Type', 'application/ocsp-request')
-            request.add_header('User-Agent', user_agent)
-            response = urlopen(request, ocsp_request.dump(), timeout)
-            ocsp_response = ocsp.OCSPResponse.load(response.read())
+            headers = {'Accept' :'application/ocsp-response', 'User-Agent': user_agent, 'Content-Type': 'application/ocsp-request'}
+            request_no_nonce = cache_manager.Request('POST', ocsp_url, data=ocsp_request_no_nonce.dump(), headers=headers)
+            request = cache_manager.Request('POST', ocsp_url, data=ocsp_request.dump(), headers=headers)
+            response = _get_response(request=request, request_cache_key=request_no_nonce, timeout=timeout)
+            ocsp_response = ocsp.OCSPResponse.load(response.content)
+
             request_nonce = ocsp_request.nonce_value
             response_nonce = ocsp_response.nonce_value
             if request_nonce and response_nonce and request_nonce.native != response_nonce.native:
