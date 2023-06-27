@@ -227,15 +227,7 @@ class ValidationContext():
                 new_ocsps.append(ocsp_)
             ocsps = new_ocsps
 
-        if moment is not None:
-            if allow_fetching:
-                raise ValueError(pretty_message(
-                    '''
-                    allow_fetching must be False when moment is specified
-                    '''
-                ))
-
-        elif not allow_fetching and crls is None and ocsps is None and revocation_mode != "soft-fail":
+        if not allow_fetching and crls is None and ocsps is None and revocation_mode != "soft-fail":
             raise ValueError(pretty_message(
                 '''
                 revocation_mode is "%s" and allow_fetching is False, however
