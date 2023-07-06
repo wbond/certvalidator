@@ -112,7 +112,7 @@ def fetch(cert, issuer, hash_algo='sha1', nonce=True, user_agent=None, timeout=1
 
             request_nonce = ocsp_request.nonce_value
             response_nonce = ocsp_response.nonce_value
-            if request_nonce and response_nonce and request_nonce.native != response_nonce.native:
+            if not isinstance(response, cache_manager.CachedResponse) and request_nonce and response_nonce and request_nonce.native != response_nonce.native:
                 raise errors.OCSPValidationError(
                     'Unable to verify OCSP response since the request and response nonces do not match'
                 )

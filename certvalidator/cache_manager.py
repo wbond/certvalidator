@@ -1,4 +1,5 @@
 from requests import Request
+from requests_cache import CachedResponse
 
 import requests
 import requests_cache
