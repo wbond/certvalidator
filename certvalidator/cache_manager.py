@@ -12,6 +12,8 @@ def is_enabled():
 def set_enabled(enabled):
     global session
     if enabled:
+        if not _cached_session:
+            raise Exception("Cached session must be created first")
         session = _cached_session
     else:
         session = _non_cache_session
@@ -33,8 +35,13 @@ def save_to_cache(request_key, response):
         return
     session.cache.save_response(response=response, cache_key=session.cache.create_key(request_key), expires=response.expires)
 
+def create_redis_cached_session(connection, namespace='certvalidator_cache'):
+    global _cached_session
+    backend = requests_cache.backends.redis.RedisCache(namespace=namespace, connection=connection)
+    _cached_session = requests_cache.CachedSession(namespace, backend=backend, cache_control=True, allowable_methods=['GET', 'POST'])
 
-_cached_session = requests_cache.CachedSession(path.join(tempfile.gettempdir(), 'requests-cache'), cache_control=True, allowable_methods=['GET', 'POST'])
+
+_cached_session = None
 _non_cache_session = requests.Session()
 
-session = _cached_session
+session = _non_cache_session
