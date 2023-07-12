@@ -1,10 +1,11 @@
 from requests import Request
 from requests_cache import CachedResponse
 
+import datetime
 import requests
 import requests_cache
-import tempfile
-from os import path
+
+MAX_CACHE_AGE = datetime.timedelta(days=10)
 
 def is_enabled():
     return session is _cached_session
@@ -30,15 +31,18 @@ def get_from_cache(request):
         return None
     return session.cache.get_response(session.cache.create_key(request))
 
-def save_to_cache(request_key, response):
+def replace_key(original_request, new_request_key, response):
     if not is_enabled():
         return
-    session.cache.save_response(response=response, cache_key=session.cache.create_key(request_key), expires=response.expires)
+    session.cache.delete(requests=[original_request])
+    max_expiration = datetime.datetime.utcnow() + MAX_CACHE_AGE
+    expiration = response.expires if response.expires and response.expires < max_expiration else max_expiration
+    session.cache.save_response(response=response, cache_key=session.cache.create_key(new_request_key), expires=expiration)
 
 def create_redis_cached_session(connection, namespace='certvalidator_cache'):
     global _cached_session
     backend = requests_cache.backends.redis.RedisCache(namespace=namespace, connection=connection)
-    _cached_session = requests_cache.CachedSession(namespace, backend=backend, cache_control=True, allowable_methods=['GET', 'POST'])
+    _cached_session = requests_cache.CachedSession(namespace, backend=backend, cache_control=True, allowable_methods=['GET', 'POST'], expire_after=MAX_CACHE_AGE)
 
 
 _cached_session = None

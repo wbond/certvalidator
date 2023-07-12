@@ -38,7 +38,7 @@ def _get_response(request, request_cache_key, timeout):
     
     prepped = cache_manager.session.prepare_request(request)
     response  = cache_manager.session.send(prepped, timeout=timeout)
-    cache_manager.save_to_cache(request_cache_key, response)
+    cache_manager.replace_key(original_request=request, new_request_key=request_cache_key, response=response)
     return response
 
 
