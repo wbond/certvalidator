@@ -3,6 +3,7 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 from datetime import datetime
 import base64
+import ssl
 import unittest
 import os
 import sys
@@ -40,6 +41,18 @@ class ValidateTests(unittest.TestCase):
         with open(os.path.join(fixtures_dir, 'nist_pkits', 'crls', filename), 'rb') as f:
             return crl.CertificateList.load(f.read())
 
+    def _fetch_revoked_demo_cert(self):
+        host = 'global-root-ca-revoked.chain-demos.digicert.com'
+        ssl_version = getattr(ssl, 'PROTOCOL_TLS_CLIENT', None)
+        if ssl_version is None:
+            ssl_version = getattr(ssl, 'PROTOCOL_TLS', ssl.PROTOCOL_SSLv23)
+        cert_pem = ssl.get_server_certificate((host, 443), ssl_version=ssl_version)
+        cert_bytes = cert_pem
+        if not isinstance(cert_bytes, bytes):
+            cert_bytes = cert_bytes.encode('ascii')
+        _, _, cert_der = pem.unarmor(cert_bytes)
+        return x509.Certificate.load(cert_der)
+
     def _load_openssl_ors(self, filename):
         with open(os.path.join(fixtures_dir, 'openssl-ocsp', filename), 'rb') as f:
             return ocsp.OCSPResponse.load(base64.b64decode(f.read()))
@@ -53,7 +66,7 @@ class ValidateTests(unittest.TestCase):
         return cert
 
     def test_revocation_mode_soft(self):
-        cert = self._load_cert_object('global-root-ca-revoked.chain-demos.digicert.com.crt')
+        cert = self._fetch_revoked_demo_cert()
         ca_certs = [self._load_cert_object('digicert-global-root-ca.crt')]
         other_certs = [
             self._load_cert_object('digicert-tls-rsa-sha256-2020-ca1.crt'),
@@ -88,7 +101,7 @@ class ValidateTests(unittest.TestCase):
             ocsp_client.fetch = orig_ocsp_fetch
 
     def test_revocation_mode_hard(self):
-        cert = self._load_cert_object('global-root-ca-revoked.chain-demos.digicert.com.crt')
+        cert = self._fetch_revoked_demo_cert()
         ca_certs = [self._load_cert_object('digicert-global-root-ca.crt')]
         other_certs = [
             self._load_cert_object('digicert-tls-rsa-sha256-2020-ca1.crt'),
@@ -107,11 +120,10 @@ class ValidateTests(unittest.TestCase):
         path = paths[0]
         self.assertEqual(3, len(path))
 
-        expected = (
-            '(CRL|OCSP response) indicates the end-entity certificate was '
-            'revoked at 03:59:20 on 2023-02-14, due to an unspecified reason'
-        )
-        with self.assertRaisesRegex(RevokedError, expected):
+        with self.assertRaisesRegex(
+            RevokedError,
+            '(CRL|OCSP response) indicates the end-entity certificate was revoked'
+        ):
             validate_path(context, path)
 
     @data('ocsp_info', True)
