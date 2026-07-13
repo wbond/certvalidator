@@ -67,9 +67,9 @@ class ValidateTests(unittest.TestCase):
 
     def test_revocation_mode_soft(self):
         cert = self._fetch_revoked_demo_cert()
-        ca_certs = [self._load_cert_object('digicert-global-root-ca.crt')]
+        ca_certs = [self._load_cert_object('digicert-assured-id-root-ca.crt')]
         other_certs = [
-            self._load_cert_object('digicert-tls-rsa-sha256-2020-ca1.crt'),
+            self._load_cert_object('digicert-assured-id-tls-rsa4096-sha256-2022-ca1.crt'),
         ]
 
         try:
@@ -102,9 +102,9 @@ class ValidateTests(unittest.TestCase):
 
     def test_revocation_mode_hard(self):
         cert = self._fetch_revoked_demo_cert()
-        ca_certs = [self._load_cert_object('digicert-global-root-ca.crt')]
+        ca_certs = [self._load_cert_object('digicert-assured-id-root-ca.crt')]
         other_certs = [
-            self._load_cert_object('digicert-tls-rsa-sha256-2020-ca1.crt'),
+            self._load_cert_object('digicert-assured-id-tls-rsa4096-sha256-2022-ca1.crt'),
         ]
 
         context = ValidationContext(
