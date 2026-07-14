@@ -3,10 +3,12 @@ from __future__ import unicode_literals, division, absolute_import, print_functi
 
 from datetime import datetime
 import base64
-import ssl
+import socket
 import unittest
 import os
 import sys
+
+from oscrypto import tls
 
 from asn1crypto import crl, ocsp, pem, x509
 from asn1crypto.util import timezone
@@ -43,15 +45,16 @@ class ValidateTests(unittest.TestCase):
 
     def _fetch_revoked_demo_cert(self):
         host = 'global-root-ca-revoked.chain-demos.digicert.com'
-        ssl_version = getattr(ssl, 'PROTOCOL_TLS_CLIENT', None)
-        if ssl_version is None:
-            ssl_version = getattr(ssl, 'PROTOCOL_TLS', ssl.PROTOCOL_SSLv23)
-        cert_pem = ssl.get_server_certificate((host, 443), ssl_version=ssl_version)
-        cert_bytes = cert_pem
-        if not isinstance(cert_bytes, bytes):
-            cert_bytes = cert_bytes.encode('ascii')
-        _, _, cert_der = pem.unarmor(cert_bytes)
-        return x509.Certificate.load(cert_der)
+        session = tls.TLSSession(manual_validation=True)
+        sock = socket.create_connection((host, 443), timeout=15)
+        try:
+            tls_socket = tls.TLSSocket.wrap(sock, host, session=session)
+            try:
+                return tls_socket.certificate
+            finally:
+                tls_socket.close()
+        finally:
+            sock.close()
 
     def _load_openssl_ors(self, filename):
         with open(os.path.join(fixtures_dir, 'openssl-ocsp', filename), 'rb') as f:
