@@ -3,22 +3,21 @@ on: [push, pull_request]
 
 jobs:
   build-windows:
-    name: Python ${{ matrix.python }} on windows-2019 ${{ matrix.arch }}
-    runs-on: windows-2019
+    name: Python ${{ matrix.python }} on windows-2022 ${{ matrix.arch }}
+    runs-on: windows-2022
     strategy:
+      fail-fast: false
       matrix:
         python:
+          - '3.14'
           - '3.11'
-          # - 'pypy-3.7-v7.3.5'
+          - '3.6'
         arch:
           - 'x86'
           - 'x64'
-        exclude:
-          - python: 'pypy-3.7-v7.3.5'
-            arch: x86
     steps:
-      - uses: actions/checkout@master
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
           architecture: ${{ matrix.arch }}
@@ -30,23 +29,23 @@ jobs:
         run: python run.py ci-driver winlegacy
 
   build-windows-old:
-    name: Python ${{ matrix.python }} on windows-2019 ${{ matrix.arch }}
-    runs-on: windows-2019
+    name: Python ${{ matrix.python }} on windows-2022 ${{ matrix.arch }}
+    runs-on: windows-2022
     strategy:
+      fail-fast: false
       matrix:
         python:
           - '2.6'
           - '2.7'
-          - '3.3'
         arch:
           - 'x86'
           - 'x64'
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v6
 
       - name: Cache Python
         id: cache-python
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ~/AppData/Local/Python${{ matrix.python }}-${{ matrix.arch }}
           key: windows-2019-python-${{ matrix.python }}-${{ matrix.arch }}
@@ -62,18 +61,21 @@ jobs:
         run: python run.py ci-driver winlegacy
 
   build-mac:
-    name: Python ${{ matrix.python }} on macos-13
-    runs-on: macos-13
+    name: Python ${{ matrix.python }} on macos-14 arm64
+    runs-on: macos-14
     strategy:
+      fail-fast: false
       matrix:
         python:
+          - '3.14'
           - '3.11'
+          - '3.8'
     steps:
-      - uses: actions/checkout@master
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
-          architecture: x64
+          architecture: arm64
       - name: Install dependencies
         run: python run.py deps
       - name: Run test suite
@@ -84,119 +86,38 @@ jobs:
         run: python run.py ci-driver openssl
       - name: Run test suite (Mac OpenSSL/cffi)
         run: python run.py ci-driver cffi openssl
-
-  build-mac-legacy:
-    name: Python ${{ matrix.python }} on macos-11
-    runs-on: macos-11
-    strategy:
-      matrix:
-        python:
-          - '3.7'
-          - '3.11'
-    steps:
-      - uses: actions/checkout@master
-      - uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python }}
-          architecture: x64
-      - name: Install dependencies
-        run: python run.py deps
-      - name: Run test suite
-        run: python run.py ci-driver
-      - name: Run test suite (Mac cffi)
-        run: python run.py ci-driver cffi
-      - name: Run test suite (Mac OpenSSL)
-        run: python run.py ci-driver openssl
-      - name: Run test suite (Mac OpenSSL/cffi)
-        run: python run.py ci-driver cffi openssl
-
-  build-mac-old:
-    name: Python ${{ matrix.python }} on macos-11
-    runs-on: macos-11
-    strategy:
-      matrix:
-        python:
-          - '2.6'
-          - '2.7'
-          - '3.3'
-    env:
-      PYTHONIOENCODING: 'utf-8:surrogateescape'
-    steps:
-      - uses: actions/checkout@master
-
-      - name: Check pyenv
-        id: check-pyenv
-        uses: actions/cache@v2
-        with:
-          path: ~/.pyenv
-          key: macos-11-${{ matrix.python }}-pyenv
-
-      - name: Install Python ${{ matrix.python }}
-        run: python run.py pyenv-install ${{ matrix.python }} >> $GITHUB_PATH
-
-      - name: Install dependencies
-        run: python run.py deps
-      - name: Run test suite
-        run: python run.py ci-driver
-      - name: Run test suite (Mac cffi)
-        run: python run.py ci-driver cffi
-      - name: Run test suite (Mac OpenSSL)
-        run: python run.py ci-driver openssl
-      - name: Run test suite (Mac OpenSSL/cffi)
-        run: python run.py ci-driver cffi openssl
-
-  build-mac-openssl3:
-    name: Python ${{ matrix.python }} on macos-11 with OpenSSL 3.0
-    runs-on: macos-11
-    strategy:
-      matrix:
-        python:
-          - '3.6'
-          - '3.11'
-    steps:
-      - uses: actions/checkout@master
-      - uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python }}
-          architecture: x64
-      - name: Install OpenSSL 3.0
-        run: brew install openssl@3
-      - name: Install dependencies
-        run: python run.py deps
-      - name: Run test suite (Mac OpenSSL 3.0)
-        run: python run.py ci-driver openssl3
-      - name: Run test suite (Mac OpenSSL 3.0/cffi)
-        run: python run.py ci-driver cffi openssl3
 
   build-ubuntu:
-    name: Python ${{ matrix.python }} on ubuntu-20.04 x64
-    runs-on: ubuntu-20.04
+    name: Python ${{ matrix.python }} on ubuntu-26.04 x64
+    runs-on: ubuntu-26.04
     strategy:
+      fail-fast: false
       matrix:
         python:
-          - '3.9'
-          - '3.10'
+          - '3.14'
           - '3.11'
-          - 'pypy-3.7-v7.3.5'
     steps:
-      - uses: actions/checkout@master
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
           architecture: x64
+      - name: Prepare Ubuntu
+        run: dev/ubuntu.sh py3
       - name: Install dependencies
         run: python run.py deps
       - name: Run test suite
         run: python run.py ci-driver
+      - name: Run test suite (cffi)
+        run: python run.py ci-driver cffi
 
   build-ubuntu-openssl3-py3:
-    name: Python 3 on (Docker) ubuntu-22.04 x64
-    runs-on: ubuntu-latest
-    container: ubuntu:22.04
+    name: Python 3 on ubuntu-22.04 x64
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v6
       - name: Install Python and OpenSSL
-        run: DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-install-recommends python3 python3-setuptools python-is-python3 openssl curl ca-certificates git
+        run: dev/ubuntu.sh py3
       - name: Install dependencies
         run: python run.py deps
       - name: Run test suite
@@ -205,38 +126,15 @@ jobs:
         run: python run.py ci-driver cffi
 
   build-ubuntu-openssl3-py2:
-    name: Python 2 on (Docker) ubuntu-22.04 x64
-    runs-on: ubuntu-latest
-    container: ubuntu:22.04
+    name: Python 2 on ubuntu-22.04 x64
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v6
       - name: Install Python and OpenSSL
-        run: DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-install-recommends python2 python-setuptools openssl curl ca-certificates git
+        run: dev/ubuntu.sh py2
       - name: Install dependencies
         run: python2 run.py deps
       - name: Run test suite
         run: python2 run.py ci-driver
       - name: Run test suite (cffi)
         run: python2 run.py ci-driver cffi
-
-
-  build-ubuntu-old:
-    name: Python ${{ matrix.python }} on ubuntu-20.04 x64
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        python:
-          - '3.6'
-          - '3.7'
-    steps:
-      - uses: actions/checkout@master
-      - name: Setup deadsnakes/ppa
-        run: sudo apt-add-repository ppa:deadsnakes/ppa
-      - name: Update apt
-        run: sudo apt-get update
-      - name: Install Python ${{matrix.python}}
-        run: sudo apt-get install python${{matrix.python}} python${{matrix.python}}-distutils
-      - name: Install dependencies
-        run: python${{matrix.python}} run.py deps
-      - name: Run test suite
-        run: python${{matrix.python}} run.py ci-driver
