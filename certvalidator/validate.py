@@ -677,6 +677,7 @@ def _validate_path(validation_context, path, end_entity_name_override=None):
             'certificate_policies',
             'policy_mappings',
             'policy_constraints',
+            'subject_alt_name',
             'inhibit_any_policy',
         ])
         unsupported_critical_extensions = cert.critical_extensions - supported_extensions
