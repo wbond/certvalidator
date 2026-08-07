@@ -319,6 +319,8 @@ def _validate_path(validation_context, path, end_entity_name_override=None):
             verify_func = asymmetric.dsa_verify
         elif signature_algo == 'ecdsa':
             verify_func = asymmetric.ecdsa_verify
+        elif signature_algo == 'rsassa_pss':
+            verify_func = asymmetric.rsa_pss_verify
         else:
             raise PathValidationError(pretty_message(
                 '''
