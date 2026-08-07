@@ -96,6 +96,10 @@ def fetch(cert, issuer, hash_algo='sha1', nonce=True, user_agent=None, timeout=1
             response = urlopen(request, ocsp_request.dump(), timeout)
             ocsp_response = ocsp.OCSPResponse.load(response.read())
             request_nonce = ocsp_request.nonce_value
+            if ocsp_response['response_status'].native == 'unauthorized':
+                raise errors.OCSPNoMatchesError(
+                    'Unable to verify OCSP response since the responder returned unauthorized'
+                )
             response_nonce = ocsp_response.nonce_value
             if request_nonce and response_nonce and request_nonce.native != response_nonce.native:
                 raise errors.OCSPValidationError(

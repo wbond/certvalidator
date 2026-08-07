@@ -1,7 +1,8 @@
 # coding: utf-8
 from __future__ import unicode_literals, division, absolute_import, print_function
+from datetime import datetime
 
-from asn1crypto import x509, crl
+from asn1crypto import x509, crl, util
 from oscrypto import asymmetric
 import oscrypto.errors
 
@@ -365,12 +366,11 @@ def _validate_path(validation_context, path, end_entity_name_override=None):
 
         # Step 2 a 3 - CRL/OCSP
         if not validation_context._skip_revocation_checks:
-            status_good = False
-            revocation_check_failed = False
-            matched = False
+            status_good = None
+            revocation_check_failed = None
+            matched = None
             soft_fail = False
             failures = []
-
             if cert.ocsp_urls or validation_context.revocation_mode == 'require':
                 try:
                     verify_ocsp_response(
@@ -391,7 +391,8 @@ def _validate_path(validation_context, path, end_entity_name_override=None):
                     failures.extend([failure[0] for failure in e.failures])
                     revocation_check_failed = True
                     matched = True
-                except (SoftFailError):
+                except (SoftFailError) as e:
+                    failures.extend([failure[0] for failure in e.failures])
                     soft_fail = True
                 except (OCSPNoMatchesError):
                     pass
@@ -413,12 +414,23 @@ def _validate_path(validation_context, path, end_entity_name_override=None):
                     failures.extend([failure[0] for failure in e.failures])
                     revocation_check_failed = True
                     matched = True
-                except (SoftFailError):
+                except (SoftFailError) as e:
+                    failures.extend([failure[0] for failure in e.failures])
                     soft_fail = True
                 except (CRLNoMatchesError):
                     pass
 
-            if not soft_fail:
+            if soft_fail:
+                if validation_context.revocation_mode != 'soft-fail':
+                    raise PathValidationError(pretty_message(
+                        '''
+                        The path could not be validated because the %s revocation
+                        checks failed: %s
+                        ''',
+                        _cert_type(index, last_index, end_entity_name_override),
+                        '; '.join(failures)
+                    ))
+            else:
                 if not matched and validation_context.revocation_mode == 'require':
                     raise PathValidationError(pretty_message(
                         '''
@@ -842,7 +854,6 @@ def verify_ocsp_response(cert, path, validation_context, cert_description=None, 
         certvalidator.errors.OCSPValidationIndeterminateError - when the OCSP response could not be verified
         certvalidator.errors.RevokedError - when the OCSP response indicates the certificate has been revoked
     """
-
     if not isinstance(cert, x509.Certificate):
         raise TypeError(pretty_message(
             '''
@@ -880,7 +891,10 @@ def verify_ocsp_response(cert, path, validation_context, cert_description=None, 
             type_name(cert_description)
         ))
 
-    moment = validation_context.moment
+    if validation_context.allow_fetching:
+        moment = datetime.now(util.timezone.utc)
+    else:
+        moment = validation_context.revocation_moment
 
     issuer = path.find_issuer(cert)
     certificate_registry = validation_context.certificate_registry
@@ -889,11 +903,11 @@ def verify_ocsp_response(cert, path, validation_context, cert_description=None, 
     mismatch_failures = 0
 
     ocsp_responses = validation_context.retrieve_ocsps(cert, issuer)
-
     for ocsp_response in ocsp_responses:
 
         # Make sure that we get a valid response back from the OCSP responder
         status = ocsp_response['response_status'].native
+
         if status != 'successful':
             mismatch_failures += 1
             continue
@@ -953,12 +967,14 @@ def verify_ocsp_response(cert, path, validation_context, cert_description=None, 
             ))
             continue
 
-        if moment > cert_response['next_update'].native:
-            failures.append((
-                'OCSP response is from before the validation time',
-                ocsp_response
-            ))
-            continue
+        # according to RFC 2560 4.2.1 next_update is expected, but optional
+        if cert_response['next_update']:
+            if moment > cert_response['next_update'].native:
+                failures.append((
+                    'OCSP response is from before the validation time',
+                    ocsp_response
+                ))
+                continue
 
         # To verify the response as legitimate, the responder cert must be located
         if tbs_response['responder_id'].name == 'by_key':
@@ -993,7 +1009,8 @@ def verify_ocsp_response(cert, path, validation_context, cert_description=None, 
                     skip_ocsp = skip_ocsp or signing_cert_path == path
                     if skip_ocsp and validation_context._skip_revocation_checks is False:
                         changed_revocation_flags = True
-
+                        original_moment = validation_context.moment
+                        validation_context.moment = moment
                         original_revocation_mode = validation_context.revocation_mode
                         new_revocation_mode = "soft-fail" if original_revocation_mode == "soft-fail" else "hard-fail"
 
@@ -1017,6 +1034,7 @@ def verify_ocsp_response(cert, path, validation_context, cert_description=None, 
                     if changed_revocation_flags:
                         validation_context._skip_revocation_checks = False
                         validation_context._revocation_mode = original_revocation_mode
+                        validation_context.moment = original_moment
 
             else:
                 failures.append((
@@ -1093,6 +1111,7 @@ def verify_ocsp_response(cert, path, validation_context, cert_description=None, 
 
         # Finally check to see if the certificate has been revoked
         status = cert_response['cert_status'].name
+
         if status == 'good':
             return
 
@@ -1208,7 +1227,11 @@ def verify_crl(cert, path, validation_context, use_deltas=True, cert_description
             type_name(cert_description)
         ))
 
-    moment = validation_context.moment
+    if validation_context.allow_fetching:
+        moment = datetime.now(util.timezone.utc)
+    else:
+        moment = validation_context.revocation_moment
+
     certificate_registry = validation_context.certificate_registry
 
     certificate_lists = validation_context.retrieve_crls(cert)
@@ -1279,6 +1302,7 @@ def verify_crl(cert, path, validation_context, use_deltas=True, cert_description
     checked_reasons = set()
 
     failures = []
+    soft_fail = False
     issuer_failures = 0
 
     while len(crls_to_process) > 0:
@@ -1348,16 +1372,17 @@ def verify_crl(cert, path, validation_context, use_deltas=True, cert_description
                 # Step f
                 candidate_crl_issuer_path = None
 
-                if validation_context:
-                    candidate_crl_issuer_path = validation_context.check_validation(candidate_crl_issuer)
+                candidate_crl_issuer_path = validation_context.check_validation(candidate_crl_issuer)
 
                 if candidate_crl_issuer_path is None:
                     candidate_crl_issuer_path = path.copy().truncate_to_issuer(candidate_crl_issuer)
                     candidate_crl_issuer_path.append(candidate_crl_issuer)
                     try:
+                        original_moment = validation_context.moment
+                        validation_context.moment = moment
+
                         # Pre-emptively mark a path as validated to prevent recursion
-                        if validation_context:
-                            validation_context.record_validation(candidate_crl_issuer, candidate_crl_issuer_path)
+                        validation_context.record_validation(candidate_crl_issuer, candidate_crl_issuer_path)
 
                         temp_override = end_entity_name_override
                         if temp_override is None and candidate_crl_issuer.sha256 != cert_issuer.sha256:
@@ -1370,14 +1395,15 @@ def verify_crl(cert, path, validation_context, use_deltas=True, cert_description
 
                     except (PathValidationError) as e:
                         # If the validation did not work out, clear it
-                        if validation_context:
-                            validation_context.clear_validation(candidate_crl_issuer)
+                        validation_context.clear_validation(candidate_crl_issuer)
 
                         # We let a revoked error fall through since step k will catch
                         # it with a correct error message
                         if isinstance(e, RevokedError):
                             raise
                         raise CRLValidationError('CRL issuer certificate path could not be validated')
+                    finally:
+                        validation_context.moment = original_moment
 
                 key_usage_value = candidate_crl_issuer.key_usage_value
                 if key_usage_value and 'crl_sign' not in key_usage_value.native:
@@ -1450,12 +1476,21 @@ def verify_crl(cert, path, validation_context, use_deltas=True, cert_description
                 certificate_list
             ))
             continue
-        if moment > certificate_list['tbs_cert_list']['next_update'].native:
-            failures.append((
-                'CRL should have been regenerated by the validation time',
-                certificate_list
-            ))
-            continue
+
+        # according to RFC 5280 5.1.2.5 next_update is expected, but optional
+        # in x.509 asn1
+        if certificate_list['tbs_cert_list']['next_update']:
+            if moment > certificate_list['tbs_cert_list']['next_update'].native:
+                failures.append((
+                    'CRL should have been regenerated by the validation time',
+                    certificate_list
+                ))
+                continue
+        else:
+            failures.append(
+                ('nextUpdate field is expected to be present in CRL',
+                 certificate_list))
+            soft_fail = True
 
         # Step b 2
 
@@ -1709,8 +1744,7 @@ def verify_crl(cert, path, validation_context, use_deltas=True, cert_description
     # CRLs should not include this value, but at least one of the examples
     # from the NIST test suite does
     checked_reasons -= set(['unused'])
-
-    if checked_reasons != valid_reasons:
+    if checked_reasons != valid_reasons or soft_fail:
         if total_crls == issuer_failures:
             raise CRLNoMatchesError(pretty_message(
                 '''
@@ -1724,6 +1758,17 @@ def verify_crl(cert, path, validation_context, use_deltas=True, cert_description
             failures.append((
                 'The available CRLs do not cover all revocation reasons',
             ))
+
+        if soft_fail:
+            raise SoftFailError(
+                pretty_message(
+                    '''
+                    There was an issue with a CRL response for %s
+                    ''',
+                    cert_description
+                    ),
+                failures
+                )
 
         raise CRLValidationIndeterminateError(
             pretty_message(

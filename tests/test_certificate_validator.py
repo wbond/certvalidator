@@ -32,6 +32,14 @@ class CertificateValidatorTests(unittest.TestCase):
             cert = x509.Certificate.load(cert_bytes)
         return cert
 
+    def _load_trust_roots(self, path):
+            rootCertificates = []
+            certificates = os.listdir(path)
+            certificate_files = [cert for cert in certificates if '.crt' in cert]
+            for certificate_file_name in certificate_files:
+                rootCertificates.append(self._load_cert_object('root_certs', certificate_file_name))
+            return rootCertificates
+
     def test_basic_certificate_validator_tls(self):
         cert = self._load_cert_object('mozilla.org.crt')
         other_certs = [self._load_cert_object('digicert-sha2-secure-server-ca.crt')]
@@ -122,3 +130,22 @@ class CertificateValidatorTests(unittest.TestCase):
 
         # If whitelist does not work, this will raise exception for key usage
         validator.validate_usage(set(['crl_sign']))
+
+    def test_crl_without_update_field(self):
+        cert = self._load_cert_object('microsoft_armored.crt')
+        root_certificates = self._load_trust_roots(os.path.join(fixtures_dir, 'root_certs'))
+        moment = datetime(2009, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+        context = ValidationContext(trust_roots=root_certificates, moment=moment,
+                                    allow_fetching=True)
+        validator = CertificateValidator(cert, validation_context=context)
+        validator.validate_usage(set(['digital_signature']), set(['code_signing']), False)
+
+    def test_crl_without_update_field_hard_fail(self):
+        cert = self._load_cert_object('microsoft_armored.crt')
+        root_certificates = self._load_trust_roots(os.path.join(fixtures_dir, 'root_certs'))
+        moment = datetime(2009, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+        context = ValidationContext(trust_roots=root_certificates, moment=moment,
+                                    allow_fetching=True, revocation_mode='hard-fail')
+        validator = CertificateValidator(cert, validation_context=context)
+        with self.assertRaisesRegexp(PathValidationError, 'nextUpdate field is expected to be present in CRL'):
+            validator.validate_usage(set(['digital_signature']), set(['code_signing']), False)

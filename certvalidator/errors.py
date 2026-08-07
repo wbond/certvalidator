@@ -53,7 +53,9 @@ class OCSPValidationIndeterminateError(OCSPValidationError):
 
 class SoftFailError(Exception):
 
-    pass
+    @property
+    def failures(self):
+        return self.args[1]
 
 
 class ValidationError(Exception):
