@@ -241,7 +241,8 @@ class ValidationContext():
                 revocation_mode is "%s" and allow_fetching is False, however
                 crls and ocsps are both None, meaning that no validation can
                 happen
-                '''
+                ''',
+                revocation_mode
             ))
 
         if crl_fetch_params is not None and not isinstance(crl_fetch_params, dict):
