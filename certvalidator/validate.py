@@ -664,22 +664,7 @@ def _validate_path(validation_context, path, end_entity_name_override=None):
 
         # Step 3 o
         # Check for critical unsupported extensions
-        supported_extensions = set([
-            'authority_information_access',
-            'authority_key_identifier',
-            'basic_constraints',
-            'crl_distribution_points',
-            'extended_key_usage',
-            'freshest_crl',
-            'key_identifier',
-            'key_usage',
-            'ocsp_no_check',
-            'certificate_policies',
-            'policy_mappings',
-            'policy_constraints',
-            'inhibit_any_policy',
-        ])
-        unsupported_critical_extensions = cert.critical_extensions - supported_extensions
+        unsupported_critical_extensions = cert.critical_extensions - validation_context.critical_extensions
         if unsupported_critical_extensions:
             raise PathValidationError(pretty_message(
                 '''

@@ -31,6 +31,10 @@ class ValidationContext():
     # options include: "md2", "md5", "sha1"
     weak_hash_algos = None
 
+    # A set of unicode strings of critical extensions. If an intermediate certificate
+    # has a critical extension not in this set, it will fail validation.
+    critical_extensions = None
+
     # A set of byte strings of the SHA-1 hashes of certificates that are whitelisted
     _whitelisted_certs = None
 
@@ -102,7 +106,7 @@ class ValidationContext():
     def __init__(self, trust_roots=None, extra_trust_roots=None, other_certs=None,
                  whitelisted_certs=None, moment=None, allow_fetching=False, crls=None,
                  crl_fetch_params=None, ocsps=None, ocsp_fetch_params=None,
-                 revocation_mode="soft-fail", weak_hash_algos=None):
+                 revocation_mode="soft-fail", weak_hash_algos=None, additional_critical_extensions=None):
         """
         :param trust_roots:
             If the operating system's trust list should not be used, instead
@@ -329,6 +333,31 @@ class ValidationContext():
         else:
             weak_hash_algos = set(['md2', 'md5'])
 
+        supported_critical_extensions = set([
+            'authority_information_access',
+            'authority_key_identifier',
+            'basic_constraints',
+            'crl_distribution_points',
+            'extended_key_usage',
+            'freshest_crl',
+            'key_identifier',
+            'key_usage',
+            'ocsp_no_check',
+            'certificate_policies',
+            'policy_mappings',
+            'policy_constraints',
+            'inhibit_any_policy',
+        ])
+        if additional_critical_extensions is not None:
+            if not isinstance(additional_critical_extensions, set):
+                raise TypeError(pretty_message(
+                    '''
+                    additional_critical_extensions must be a set of unicode strings, not %s
+                    ''',
+                    type_name(additional_critical_extensions)
+                ))
+            supported_critical_extensions |= additional_critical_extensions
+
         self.certificate_registry = CertificateRegistry(
             trust_roots,
             extra_trust_roots,
@@ -362,6 +391,7 @@ class ValidationContext():
         self._revocation_mode = revocation_mode
         self._soft_fail_exceptions = []
         self.weak_hash_algos = weak_hash_algos
+        self.critical_extensions = supported_critical_extensions
 
     @property
     def crls(self):
